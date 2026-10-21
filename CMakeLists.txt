@@ -24,6 +24,17 @@ add_executable(CacheSimulator
 # L1 / L2 CACHE HIERARCHY TEST
 # =========================================
 
+add_executable(CacheHierarchyTest
+    src/test_hierarchy.cpp
+    src/CacheHierarchy.cpp
+    src/Cache.cpp
+    src/CacheSet.cpp
+    src/CacheLine.cpp
+    src/CacheStats.cpp
+    src/Memory.cpp
+    src/AddressDecoder.cpp
+)
+
 
 
 add_executable(CacheComparison
@@ -181,4 +192,65 @@ set_tests_properties(
     PROPERTIES
     PASS_REGULAR_EXPRESSION
     "Stride 32[ ]+32[ ]+12[.]50[ ]+32"
+)
+
+# =========================================
+# CACHE HIERARCHY REGRESSION TEST
+# =========================================
+
+add_test(
+    NAME CacheHierarchyRegressionTest
+    COMMAND CacheHierarchyTest
+)
+
+set_tests_properties(
+    CacheHierarchyRegressionTest
+    PROPERTIES
+    PASS_REGULAR_EXPRESSION
+    "Passed: 15"
+    FAIL_REGULAR_EXPRESSION
+    "Failed: [1-9][0-9]*"
+)
+
+
+# =========================================
+# CACHE REPLACEMENT REGRESSION TEST
+# =========================================
+
+add_test(
+    NAME CacheReplacementRegressionTest
+    COMMAND CacheReplacementTest
+)
+
+set_tests_properties(
+    CacheReplacementRegressionTest
+    PROPERTIES
+    PASS_REGULAR_EXPRESSION
+    "Passed: 10"
+    FAIL_REGULAR_EXPRESSION
+    "Failed: [1-9][0-9]*"
+)
+
+# =========================================
+# GPU WARP SCHEDULING MODEL
+# =========================================
+
+add_executable(GPUWarpScheduler
+    src/gpu_warp_scheduler.cpp
+)
+
+# =========================================
+# GPU WARP SCHEDULER REGRESSION TEST
+# =========================================
+
+add_test(
+    NAME GPUWarpSchedulerTest
+    COMMAND GPUWarpScheduler
+)
+
+set_tests_properties(
+    GPUWarpSchedulerTest
+    PROPERTIES
+    PASS_REGULAR_EXPRESSION
+    "8[ ]+80[ ]+80[ ]+0[ ]+100[.]00%"
 )
