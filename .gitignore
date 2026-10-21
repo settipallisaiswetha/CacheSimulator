@@ -1,0 +1,36 @@
+
+# CMake build files
+build/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Logs
+*.log
+
+# Generated results
+*_results.csv
+matrix_performance_summary.csv
+comparison_results.csv
+policy_results.csv
+associativity_results.csv
+
+# Generated traces
+traces/sequential.txt
+traces/random.txt
+traces/repeated.txt
+traces/stride_*.txt
+traces/matrix_*.txt
+
+# Editor and OS
+.vscode/
+.DS_Store
+Thumbs.db
+build_error.txt
+trace.txt
