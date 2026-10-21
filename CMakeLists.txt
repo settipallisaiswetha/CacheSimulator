@@ -254,3 +254,43 @@ set_tests_properties(
     PASS_REGULAR_EXPRESSION
     "8[ ]+80[ ]+80[ ]+0[ ]+100[.]00%"
 )
+# GPU VARIABLE LATENCY MODEL
+add_executable(GPUVariableLatency
+    src/gpu_variable_latency.cpp
+)
+
+# =========================================
+# GPU VARIABLE LATENCY REGRESSION TEST
+# =========================================
+
+add_test(
+    NAME GPUVariableLatencyTest
+    COMMAND GPUVariableLatency
+)
+
+set_tests_properties(
+    GPUVariableLatencyTest
+    PROPERTIES
+    PASS_REGULAR_EXPRESSION
+    "32[ ]+692[ ]+256[ ]+436[ ]+36[.]99%"
+)
+# GPU SCHEDULER STALL ANALYSIS
+add_executable(GPUStallAnalysis
+    src/gpu_stall_analysis.cpp
+)
+
+# =========================================
+# GPU STALL ANALYSIS REGRESSION TEST
+# =========================================
+
+add_test(
+    NAME GPUStallAnalysisTest
+    COMMAND GPUStallAnalysis
+)
+
+set_tests_properties(
+    GPUStallAnalysisTest
+    PROPERTIES
+    PASS_REGULAR_EXPRESSION
+    "32[ ]+692[ ]+436[ ]+0[ ]+0[ ]+68[ ]+368[ ]+36[.]99%"
+)
