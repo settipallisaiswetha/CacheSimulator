@@ -1,3 +1,4 @@
+
 cmake_minimum_required(VERSION 3.20)
 
 project(CacheSimulator VERSION 1.0 LANGUAGES CXX)
@@ -35,7 +36,9 @@ add_executable(CacheHierarchyTest
     src/AddressDecoder.cpp
 )
 
-
+# =========================================
+# CACHE COMPARISON
+# =========================================
 
 add_executable(CacheComparison
     src/compare_main.cpp
@@ -49,9 +52,17 @@ add_executable(CacheComparison
     src/AddressDecoder.cpp
 )
 
+# =========================================
+# WORKLOAD GENERATOR
+# =========================================
+
 add_executable(WorkloadGenerator
     src/workload_generator.cpp
 )
+
+# =========================================
+# CACHE POLICY COMPARISON
+# =========================================
 
 add_executable(CachePolicyComparison
     src/policy_compare.cpp
@@ -65,6 +76,10 @@ add_executable(CachePolicyComparison
     src/AddressDecoder.cpp
 )
 
+# =========================================
+# CACHE REPLACEMENT TEST
+# =========================================
+
 add_executable(CacheReplacementTest
     src/test_replacement.cpp
     src/Cache.cpp
@@ -75,9 +90,17 @@ add_executable(CacheReplacementTest
     src/AddressDecoder.cpp
 )
 
+# =========================================
+# GPU WORKLOAD GENERATOR
+# =========================================
+
 add_executable(GPUWorkloadGenerator
     src/gpu_workload_generator.cpp
 )
+
+# =========================================
+# CACHE ASSOCIATIVITY COMPARISON
+# =========================================
 
 add_executable(CacheAssociativityComparison
     src/associativity_compare.cpp
@@ -91,27 +114,47 @@ add_executable(CacheAssociativityComparison
     src/AddressDecoder.cpp
 )
 
+# =========================================
+# MATRIX WORKLOAD GENERATOR
+# =========================================
+
 add_executable(MatrixWorkloadGenerator
     src/matrix_workload_generator.cpp
 )
+
+# =========================================
+# GPU WARP COALESCING
+# =========================================
 
 add_executable(GPUWarpCoalescing
     src/warp_coalescing.cpp
 )
 
+# =========================================
+# GPU SHARED MEMORY BANK CONFLICTS
+# =========================================
+
 add_executable(GPUSharedMemoryBanks
     src/shared_memory_banks.cpp
 )
+
+# =========================================
+# GPU MATRIX TRANSPOSE
+# =========================================
 
 add_executable(GPUMatrixTranspose
     src/gpu_matrix_transpose.cpp
 )
 
 # =========================================
-# GPU MEMORY MODEL REGRESSION TESTS
+# ENABLE TESTING
 # =========================================
 
 enable_testing()
+
+# =========================================
+# GPU MEMORY MODEL REGRESSION TESTS
+# =========================================
 
 add_test(
     NAME GPUWarpCoalescingTest
@@ -127,11 +170,6 @@ add_test(
     NAME GPUMatrixTransposeTest
     COMMAND GPUMatrixTranspose
 )
-
-
-# =========================================
-# GPU NUMERICAL REGRESSION CHECKS
-# =========================================
 
 set_tests_properties(
     GPUWarpCoalescingTest
@@ -167,7 +205,7 @@ target_include_directories(GPUMemoryModel PUBLIC
 )
 
 # =========================================
-# INTEGRATED GPU MEMORY COMPARISON
+# GPU MEMORY COMPARISON
 # =========================================
 
 add_executable(GPUMemoryComparison
@@ -177,10 +215,6 @@ add_executable(GPUMemoryComparison
 target_link_libraries(GPUMemoryComparison PRIVATE
     GPUMemoryModel
 )
-
-# =========================================
-# INTEGRATED GPU MODEL TEST
-# =========================================
 
 add_test(
     NAME GPUMemoryComparisonTest
@@ -212,7 +246,6 @@ set_tests_properties(
     "Failed: [1-9][0-9]*"
 )
 
-
 # =========================================
 # CACHE REPLACEMENT REGRESSION TEST
 # =========================================
@@ -232,16 +265,12 @@ set_tests_properties(
 )
 
 # =========================================
-# GPU WARP SCHEDULING MODEL
+# GPU WARP SCHEDULER
 # =========================================
 
 add_executable(GPUWarpScheduler
     src/gpu_warp_scheduler.cpp
 )
-
-# =========================================
-# GPU WARP SCHEDULER REGRESSION TEST
-# =========================================
 
 add_test(
     NAME GPUWarpSchedulerTest
@@ -254,14 +283,14 @@ set_tests_properties(
     PASS_REGULAR_EXPRESSION
     "8[ ]+80[ ]+80[ ]+0[ ]+100[.]00%"
 )
+
+# =========================================
 # GPU VARIABLE LATENCY MODEL
+# =========================================
+
 add_executable(GPUVariableLatency
     src/gpu_variable_latency.cpp
 )
-
-# =========================================
-# GPU VARIABLE LATENCY REGRESSION TEST
-# =========================================
 
 add_test(
     NAME GPUVariableLatencyTest
@@ -274,14 +303,14 @@ set_tests_properties(
     PASS_REGULAR_EXPRESSION
     "32[ ]+692[ ]+256[ ]+436[ ]+36[.]99%"
 )
+
+# =========================================
 # GPU SCHEDULER STALL ANALYSIS
+# =========================================
+
 add_executable(GPUStallAnalysis
     src/gpu_stall_analysis.cpp
 )
-
-# =========================================
-# GPU STALL ANALYSIS REGRESSION TEST
-# =========================================
 
 add_test(
     NAME GPUStallAnalysisTest
@@ -293,4 +322,95 @@ set_tests_properties(
     PROPERTIES
     PASS_REGULAR_EXPRESSION
     "32[ ]+692[ ]+436[ ]+0[ ]+0[ ]+68[ ]+368[ ]+36[.]99%"
+)
+
+# =========================================
+# GPU CACHE LATENCY ADAPTER
+# =========================================
+
+add_library(GPULatencyAdapter STATIC
+    src/GPULatencyAdapter.cpp
+)
+
+target_include_directories(GPULatencyAdapter PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+
+# =========================================
+# GPU LATENCY ADAPTER INTEGRATION TEST
+# =========================================
+
+add_executable(GPULatencyAdapterTest
+    src/test_gpu_latency_adapter.cpp
+    src/CacheHierarchy.cpp
+    src/Cache.cpp
+    src/CacheSet.cpp
+    src/CacheLine.cpp
+    src/CacheStats.cpp
+    src/Memory.cpp
+    src/AddressDecoder.cpp
+)
+
+target_link_libraries(GPULatencyAdapterTest PRIVATE
+    GPULatencyAdapter
+)
+
+add_test(
+    NAME GPULatencyAdapterIntegrationTest
+    COMMAND GPULatencyAdapterTest
+)
+
+# =========================================
+# GPU WARP MEMORY ACCESS LIBRARY
+# =========================================
+
+add_library(GPUWarpMemoryAccess STATIC
+    src/GPUWarpMemoryAccess.cpp
+)
+
+target_include_directories(GPUWarpMemoryAccess PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+
+target_link_libraries(GPUWarpMemoryAccess PUBLIC
+    GPULatencyAdapter
+    GPUMemoryModel
+)
+
+# =========================================
+# INTEGRATED GPU PERFORMANCE SIMULATOR
+# =========================================
+
+add_executable(GPUIntegratedSimulator
+    src/gpu_integrated_scheduler.cpp
+    src/CacheHierarchy.cpp
+    src/Cache.cpp
+    src/CacheSet.cpp
+    src/CacheLine.cpp
+    src/CacheStats.cpp
+    src/Memory.cpp
+    src/AddressDecoder.cpp
+)
+
+target_link_libraries(GPUIntegratedSimulator PRIVATE
+    GPUWarpMemoryAccess
+)
+
+# =========================================
+# INTEGRATED GPU SIMULATOR REGRESSION TEST
+# =========================================
+
+add_test(
+    NAME GPUIntegratedSimulatorTest
+    COMMAND GPUIntegratedSimulator
+)
+
+
+
+
+set_tests_properties(
+    GPUIntegratedSimulatorTest
+    PROPERTIES
+    PASS_REGULAR_EXPRESSION
+    "32[ ]+2832[ ]+3231[ ]+256[ ]+2576[ ]+0[ ]+0[ ]+512[ ]+1024[ ]+512[ ]+9[.]04[ ]+7[.]92%"
 )
