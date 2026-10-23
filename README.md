@@ -1,266 +1,202 @@
-# C++ Cache Hierarchy and Performance Simulator
+# C++ Cache Hierarchy and GPU Performance Simulator
 
-A trace-driven C++ simulator for exploring cache hierarchy behavior, replacement policies, memory locality, associativity, and matrix multiplication tiling.
+A C++20, trace-driven cache hierarchy and **GPU-inspired memory performance modelling** project. It combines a configurable two-level cache hierarchy with analytical GPU memory-access models, a simplified warp scheduler, latency classification, bottleneck analysis, and controlled memory-level parallelism (MLP) experiments.
 
-The project implements a configurable two-level cache hierarchy and evaluates memory access patterns using hit/miss statistics and a simplified Average Memory Access Time (AMAT) model.
+> **Scope:** This is an educational, GPU-inspired performance model—not a cycle-accurate simulator of any NVIDIA, AMD, or Apple GPU. Reported cycles and speedups are simulated estimates, not hardware measurements.
 
 ## Features
 
-- Configurable L1 and L2 cache sizes and associativity
+### Cache hierarchy and workloads
+- Configurable L1/L2 cache sets and associativity; inclusive hierarchy with L1 invalidation on L2 eviction
 - FIFO, LRU, and RANDOM replacement policies
-- Write-back and write-through policies
-- Write allocation and dirty-block eviction handling
-- Inclusive L1/L2 hierarchy with L1 invalidation on L2 eviction
-- Trace-driven read and write simulation
-- Sequential, random, repeated, and strided memory workloads
-- Cache configuration and associativity comparisons
+- Write-back and write-through policies; write allocation and dirty eviction handling
+- Trace-driven reads and writes, sequential/random/repeated/strided workloads
+- Cache configuration, associativity, and replacement-policy comparisons
 - Naive and tiled matrix multiplication memory traces
-- CSV-based performance reports and Python visualization
+- CSV reports and Python/Matplotlib visualization
+
+### GPU-inspired modelling
+- **Warp coalescing:** 32-lane accesses grouped into 32-byte memory sectors
+- **Shared-memory bank conflicts:** 32 banks with 4-byte bank words; broadcast and conflict examples
+- **Matrix transpose:** comparison of naive, tiled, and padded shared-memory access patterns
+- **Warp scheduling:** round-robin, single-issue scheduling and dependent instruction latencies
+- **Cache-aware memory accesses:** warp addresses mapped to cache lines and classified as L1, L2, or DRAM accesses
+- **GPU latency adapter:** illustrative L1/L2/DRAM latencies of 20/100/400 cycles
+- **Bottleneck analysis:** issue-slot utilization, scheduler idle time, completion tail, and cache-level access fractions
+- **Cache sweep:** 4 configurations × 4 warp counts, exporting 16 experiments to CSV
+- **Memory request queue:** configurable outstanding-request capacity and completion tracking
+- **MLP comparison:** capacities of 2, 4, 8, 16, and 32 with numerical regression checks
 
 ## Architecture
 
 ```text
-Memory Trace
-     |
-     v
-Trace Reader
-     |
-     v
-L1 Cache
-     |
-     v
-L2 Cache
-     |
-     v
-Main Memory
+                         Workload / Warp Address Generator
+                                      |
+                        +-------------+-------------+
+                        |                           |
+                 Trace-driven path              GPU-inspired path
+                        |                           |
+                  L1 Cache                  Warp Scheduler
+                        |                           |
+                  L2 Cache                Warp Memory Access
+                        |                           |
+                 Main Memory              Coalescing / Cache Lines
+                                                    |
+                                             GPU Latency Adapter
+                                                    |
+                                               L1 -> L2 -> DRAM
 
-Statistics:
-L1/L2 Hits, Misses, Write-backs
-            |
-            v
-Performance Analysis
-            |
-            v
-CSV Reports and Graphs
+        Separate MLP experiment: Warps -> Finite Request Queue -> Completion Events
+
+                   Statistics -> Bottleneck Analysis -> CSV / Console
 ```
 
-The simulator models cache blocks, sets, address decoding, replacement policies, write policies, and a backing-memory abstraction.
+The GPU integrated simulator and the MLP comparison are **separate experiments**. The MLP queue is not yet wired into the integrated cache-aware scheduler.
 
-## Technology Stack
+## Technology
 
-- C++20
-- CMake
-- GCC / MSYS2
-- Python
-- Matplotlib
-- Git and GitHub
+C++20, CMake, GCC/MSYS2, PowerShell, Git/GitHub, Python 3, and Matplotlib (for visualization).
 
-## Build Instructions
+## Build and test
 
-### Requirements
+Requirements: C++20-compatible compiler and CMake. Python/Matplotlib are only needed for the plotting scripts.
 
-- C++20-compatible compiler
-- CMake
-- Python 3
-- Matplotlib for visualization
-
-### Build
-
-From the project root:
-
-```bash
+```powershell
 cmake -S . -B build
 cmake --build build
+ctest --test-dir build --output-on-failure
 ```
 
-### Run Cache Hierarchy Tests
+The latest local verification reported **16/16 CTest tests passing**. These include cache, GPU memory, scheduler, latency adapter, bottleneck analyzer, cache sweep, and MLP comparison tests. Numerical regression checks cover five MLP queue capacities. Tests exercise selected scenarios rather than exhaustively proving correctness.
+
+### Useful executables
 
 ```powershell
+# Integrated GPU performance experiment
+.\build\GPUIntegratedSimulator.exe
+
+# Cache configuration sweep (writes gpu_cache_sweep_results.csv)
+.\build\GPUCacheConfigurationComparison.exe
+
+# Outstanding-memory-request capacity experiment
+.\build\GPUMLPComparison.exe
+
+# Other cache and GPU experiments
 .\build\CacheHierarchyTest.exe
-```
-
-### Run Replacement Policy Tests
-
-```powershell
 .\build\CacheReplacementTest.exe
+.\build\GPUMemoryComparison.exe
 ```
 
-### Generate Memory Workloads
+Some trace-driven comparisons expect a workload path:
 
 ```powershell
 .\build\WorkloadGenerator.exe
 .\build\GPUWorkloadGenerator.exe
 .\build\MatrixWorkloadGenerator.exe
-```
-
-### Run Cache Configuration Comparison
-
-```powershell
 .\build\CacheComparison.exe traces\sample_trace.txt
-```
-
-### Run Replacement Policy Comparison
-
-```powershell
 .\build\CachePolicyComparison.exe traces\repeated.txt
-```
-
-### Run Associativity Comparison
-
-```powershell
 .\build\CacheAssociativityComparison.exe traces\stride_8.txt
 ```
 
-### Generate Matrix Performance Reports
+Optional plotting:
 
 ```powershell
 python -m pip install matplotlib
 python analyze_performance.py
+python analyze_gpu_memory.py
 ```
 
-## Performance Evaluation
+## Experimental results
 
-The simulator was evaluated using sequential, random, repeated, strided, and matrix multiplication memory traces.
+### 1. Matrix multiplication locality
 
-### Matrix Multiplication Results
+Estimated total memory-access cycles for 32×32 matrix multiplication traces:
 
-The following table reports estimated total memory-access cycles for a 32×32 matrix multiplication workload.
-
-| Workload | Small Cache | Medium Cache | Large Cache |
+| Workload | Small cache | Medium cache | Large cache |
 |---|---:|---:|---:|
 | Naive | 4,265,920 | 3,986,080 | 3,914,240 |
 | Tiled 4×4 | 5,462,784 | 971,044 | 419,824 |
 | Tiled 8×8 | 4,701,952 | 2,676,572 | 446,332 |
 | Tiled 16×16 | 4,431,616 | 4,164,416 | 1,603,156 |
 
-For the Large cache configuration, 4×4 tiling reduced estimated memory-access cost by **89.27%** relative to the naive trace.
+For the large-cache configuration, the 4×4 tiled trace reduces estimated memory-access cost by **approximately 89.27%** versus the naive trace. The naive and tiled traces use different output-matrix access patterns; this is **not** a controlled end-to-end kernel speedup.
 
-This result illustrates the effect of improved memory locality and cache reuse under the simulated configuration.
+![Matrix AMAT comparison](matrix_amat.png)
+![Matrix estimated memory cycles](matrix_total_cycles.png)
 
-### Performance Graphs
+The original trace-driven AMAT model uses illustrative latencies of **L1 = 1**, **L2 = 10**, and **main memory = 100** cycles:
 
-![Matrix AMAT Comparison](matrix_amat.png)
+```text
+AMAT = T_L1 + MR_L1 × (T_L2 + MR_L2 × T_MEM)
+```
 
-![Matrix Total Memory Cycles](matrix_total_cycles.png)
+Here `MR_L2` is the conditional L2 miss rate among accesses reaching L2. This model is distinct from the GPU latency adapter's 20/100/400-cycle assumptions.
 
-## Performance Model
+### 2. Warp coalescing and shared memory
 
-The simulator estimates AMAT using:
-
-\[
-AMAT = T_{L1} + MR_{L1}(T_{L2} + MR_{L2}T_{MEM})
-\]
-
-Where:
-
-- L1 latency = 1 cycle
-- L2 latency = 10 cycles
-- Main memory latency = 100 cycles
-- MR represents the corresponding cache miss rate
-
-The total estimated memory-access cost is calculated from the number of L1 accesses, L1 misses, and L2 misses.
-
-## Testing
-
-The project has passed:
-
-- 15 cache hierarchy regression assertions
-- 10 FIFO/LRU replacement-policy assertions
-
-These tests cover selected cache behavior, data preservation, dirty-block handling, and eviction order.
-
-## Limitations
-
-- This is a functional cache simulator with a simplified latency model, not a cycle-accurate processor or GPU simulator.
-- The model does not include memory-level parallelism, bandwidth limitations, detailed pipeline timing, or complete write-back latency.
-- The naive and tiled matrix traces use different output-matrix access patterns, so results represent their respective generated traces rather than a fully controlled end-to-end execution benchmark.
-- GPU-specific features such as warp coalescing, shared memory, and GPU scheduling are not yet implemented.
-- The tests cover selected scenarios and do not constitute exhaustive correctness verification.
-
-## Future Improvements
-
-- GPU warp-level memory coalescing
-- Shared-memory bank conflict modelling
-- Configurable GPU-inspired memory hierarchy
-- Cache sensitivity studies across workloads
-- Controlled matrix multiplication benchmarks
-- More comprehensive automated regression testing
-
-## Project Objective
-
-This project was developed to strengthen practical understanding of Computer Architecture, memory hierarchy design, C++ systems programming, and performance modelling.
-
-It provides a foundation for future work in GPU architecture and performance analysis.
-
-
-## GPU Memory Performance Modelling
-
-This project includes experimental GPU memory models implemented in C++20.
-
-### 1. Warp Memory Coalescing
-
-Models memory access patterns across a 32-thread warp using
-32-byte memory sectors.
-
-Supported patterns:
-- Contiguous access
-- Strided access
-- Misaligned access
-
-### 2. Shared Memory Bank Conflicts
-
-Models 32 shared-memory banks with 4-byte bank words.
-
-Demonstrates:
-- Conflict-free accesses
-- 2-way to 32-way bank conflicts
-- Shared-memory broadcast behavior
-
-### 3. GPU Matrix Transpose Optimization
-
-Compares three memory-access scenarios:
-
-| Method | Global Sectors | Bank Conflict |
+| Transpose access pattern | Global memory sectors | Maximum bank conflict |
 |---|---:|---:|
 | Naive transpose | 32 | 1 |
 | Tiled transpose | 4 | 32 |
 | Tiled transpose with padding | 4 | 1 |
 
-These are analytical memory-access results, not measured
-GPU execution times.
+These are analytical access-pattern results, not measured GPU execution times. The reusable functions include `gpu::analyzeCoalescing()` and `gpu::analyzeBankConflicts()`.
 
-### 4. Integrated GPU Memory Model
+![GPU coalescing efficiency](gpu_coalescing_efficiency.png)
+![GPU shared-memory bank conflicts](gpu_bank_conflicts.png)
 
-Reusable C++ functions:
-- `gpu::analyzeCoalescing()`
-- `gpu::analyzeBankConflicts()`
+### 3. GPU cache configuration sweep
 
-The integrated model exports results to
-`gpu_memory_results.csv`.
+The sweep compares **Baseline, Config_A, Config_B, and Config_C** for 4, 8, 16, and 32 active warps, producing **16 CSV rows**.
 
-### 5. Performance Visualization
+| Warps | Configuration | L1 hits | L2 hits | DRAM accesses | Completion cycles |
+|---:|---|---:|---:|---:|---:|
+| 4 | Baseline | 0 | 32 | 32 | 2,003 |
+| 4 | Config_A | 32 | 0 | 32 | 1,683 |
+| 8 | Baseline | 0 | 0 | 128 | 3,207 |
+| 8 | Config_B | 64 | 0 | 64 | 1,687 |
+| 16 | Baseline | 0 | 0 | 256 | 3,215 |
+| 16 | Config_C | 128 | 0 | 128 | 1,695 |
+| 32 | Baseline | 0 | 0 | 512 | 3,231 |
+| 32 | Config_C | 0 | 0 | 512 | 3,231 |
 
-**Global memory efficiency**
+At 16 warps, Config_C reduces simulated completion cycles from 3,215 to 1,695 (**~47.3% reduction; ~1.90× speedup**). At 32 warps, the compared configurations produce identical completion cycles for this workload.
 
-![GPU Coalescing Efficiency](gpu_coalescing_efficiency.png)
+**Interpretation caveat:** The sweep increases associativity while keeping set counts fixed, so total cache capacity also changes. It does not isolate associativity from capacity.
 
-**Shared-memory bank conflicts**
+### 4. Memory-level parallelism (MLP)
 
-![GPU Bank Conflicts](gpu_bank_conflicts.png)
+Experiment: 32 warps, 8 dependent requests per warp (256 total), fixed 400-cycle request latency, one request issued per cycle, finite outstanding-request queue.
 
-### Build and Run
+| Queue capacity | Issue cycles | Completion cycles | Queue stall cycles | Peak outstanding |
+|---:|---:|---:|---:|---:|
+| 2 | 50,802 | 51,201 | 50,546 | 2 |
+| 4 | 25,204 | 25,603 | 24,948 | 4 |
+| 8 | 12,408 | 12,807 | 12,152 | 8 |
+| 16 | 6,016 | 6,415 | 5,760 | 16 |
+| 32 | 2,832 | 3,231 | 0 | 32 |
 
-```powershell
-cmake -S . -B build
-cmake --build build
-.\build\GPUMemoryComparison.exe
-python analyze_gpu_memory.py
-```
+Increasing queue capacity from 2 to 32 reduces simulated completion cycles by **~93.7%** (a **~15.85×** speedup). At capacity 32, there are no queue-capacity stalls, but warps still experience dependency-related idle cycles.
 
-### Testing
+## Modelling assumptions and limitations
 
-```powershell
-ctest --test-dir build --output-on-failure
-```
+- GPU-inspired functional/analytical model; **not** cycle-accurate and not calibrated to a specific commercial GPU.
+- Integrated scheduler issues one instruction per cycle using round-robin selection; issue utilization measures the **modelled issue slot**, not physical SM occupancy or hardware utilization.
+- Integrated warp memory access assumes perfect overlap of requests to distinct cache lines, using the maximum access latency as warp latency; it does not model DRAM queueing or bandwidth contention.
+- Cache state is updated when accesses are modelled rather than upon asynchronous completion.
+- The separate MLP comparison models finite outstanding requests and dependency delays, but uses a fixed memory latency without DRAM service contention, cache hierarchy, or bandwidth limits.
+- Memory coalescing and bank conflict calculations use simplified 32-lane, 32-byte-sector and 32-bank assumptions.
+- Cache sweep configurations vary both associativity and total cache capacity.
+- Matrix multiplication results are trace-based estimated costs, not controlled wall-clock GPU benchmarks.
 
-The GPU modules have four CTest regression checks.
+## Future improvements
+
+- Integrate outstanding-request limits into the cache-aware warp scheduler
+- Add finite DRAM bandwidth, queueing, and service contention
+- Hold cache capacity constant during associativity sensitivity studies
+- Add more workloads, parameterized configuration, and independent reference tests
+- Add CI build/test automation and reproducible plots from CSV outputs
+
+## Project objective
+
+Develop practical skills in **computer architecture, GPU memory systems, C++ systems programming, experimental methodology, and performance modelling**. The project is intended as an educational and portfolio foundation for GPU architecture and performance engineering work.
