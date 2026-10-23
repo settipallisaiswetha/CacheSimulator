@@ -544,3 +544,27 @@ set_tests_properties(
     PASS_REGULAR_EXPRESSION
     "All GPU memory queue tests passed!"
 )
+
+# =========================================
+# GPU MEMORY-LEVEL PARALLELISM COMPARISON
+# =========================================
+
+add_executable(GPUMLPComparison
+    src/gpu_mlp_comparison.cpp
+)
+
+target_link_libraries(GPUMLPComparison PRIVATE
+    GPUMemoryQueue
+)
+
+add_test(
+    NAME GPUMLPComparisonTest
+    COMMAND GPUMLPComparison
+)
+
+set_tests_properties(
+    GPUMLPComparisonTest
+    PROPERTIES
+    PASS_REGULAR_EXPRESSION
+    "All GPU MLP configurations completed!"
+)
