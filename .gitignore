@@ -34,3 +34,14 @@ traces/matrix_*.txt
 Thumbs.db
 build_error.txt
 trace.txt
+
+# CMake build directories
+/build/
+/build_verify/
+
+# Generated experiment logs
+/cache_comparison_*.txt
+/cache_comparison_results.txt
+/gpu_cache_sweep_output.txt
+/gpu_debug_output.txt
+/integrated_results.txt
