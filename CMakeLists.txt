@@ -414,3 +414,101 @@ set_tests_properties(
     PASS_REGULAR_EXPRESSION
     "32[ ]+2832[ ]+3231[ ]+256[ ]+2576[ ]+0[ ]+0[ ]+512[ ]+1024[ ]+512[ ]+9[.]04[ ]+7[.]92%"
 )
+
+# =========================================
+# GPU PERFORMANCE BOTTLENECK ANALYZER
+# =========================================
+
+add_library(GPUBottleneckAnalyzer STATIC
+    src/GPUBottleneckAnalyzer.cpp
+)
+
+target_include_directories(GPUBottleneckAnalyzer PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+
+target_link_libraries(GPUIntegratedSimulator PRIVATE
+    GPUBottleneckAnalyzer
+)
+
+# =========================================
+# GPU BOTTLENECK ANALYZER REGRESSION TEST
+# =========================================
+
+add_executable(GPUBottleneckAnalyzerTest
+    src/test_gpu_bottleneck_analyzer.cpp
+)
+
+target_link_libraries(GPUBottleneckAnalyzerTest PRIVATE
+    GPUBottleneckAnalyzer
+)
+
+add_test(
+    NAME GPUBottleneckAnalyzerRegressionTest
+    COMMAND GPUBottleneckAnalyzerTest
+)
+
+set_tests_properties(
+    GPUBottleneckAnalyzerRegressionTest
+    PROPERTIES
+    PASS_REGULAR_EXPRESSION
+    "All GPU bottleneck analyzer tests passed!"
+)
+
+# =========================================
+# GPU CACHE CONFIGURATION COMPARISON
+# =========================================
+
+add_executable(GPUCacheConfigurationComparison
+    src/gpu_cache_configuration_comparison.cpp
+    src/CacheHierarchy.cpp
+    src/Cache.cpp
+    src/CacheSet.cpp
+    src/CacheLine.cpp
+    src/CacheStats.cpp
+    src/Memory.cpp
+    src/AddressDecoder.cpp
+)
+
+target_link_libraries(
+    GPUCacheConfigurationComparison
+    PRIVATE
+    GPUWarpMemoryAccess
+    GPUBottleneckAnalyzer
+)
+
+# GPU Cache Sweep Regression Test
+
+find_program(POWERSHELL_EXECUTABLE
+    NAMES pwsh powershell
+)
+
+if(POWERSHELL_EXECUTABLE)
+    add_test(
+        NAME GPUCacheSweepRegressionTest
+        COMMAND ${POWERSHELL_EXECUTABLE}
+            -NoProfile
+            -ExecutionPolicy Bypass
+            -File
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/verify_gpu_cache_sweep.ps1"
+            -CsvPath
+            "${CMAKE_CURRENT_BINARY_DIR}/gpu_cache_sweep_results.csv"
+    )
+
+    set_tests_properties(
+        GPUCacheSweepRegressionTest
+        PROPERTIES
+        DEPENDS GPUCacheSweepGenerateTest
+    )
+
+    add_test(
+        NAME GPUCacheSweepGenerateTest
+        COMMAND GPUCacheConfigurationComparison
+    )
+
+    set_tests_properties(
+        GPUCacheSweepGenerateTest
+        PROPERTIES
+        WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+    )
+endif()
