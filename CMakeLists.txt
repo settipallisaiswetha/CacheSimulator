@@ -512,3 +512,35 @@ if(POWERSHELL_EXECUTABLE)
         WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
     )
 endif()
+
+# =========================================
+# GPU MEMORY-LEVEL PARALLELISM
+# =========================================
+
+add_library(GPUMemoryQueue STATIC
+    src/GPUMemoryQueue.cpp
+)
+
+target_include_directories(GPUMemoryQueue PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+
+add_executable(GPUMemoryQueueTest
+    src/test_gpu_memory_queue.cpp
+)
+
+target_link_libraries(GPUMemoryQueueTest PRIVATE
+    GPUMemoryQueue
+)
+
+add_test(
+    NAME GPUMemoryQueueRegressionTest
+    COMMAND GPUMemoryQueueTest
+)
+
+set_tests_properties(
+    GPUMemoryQueueRegressionTest
+    PROPERTIES
+    PASS_REGULAR_EXPRESSION
+    "All GPU memory queue tests passed!"
+)
