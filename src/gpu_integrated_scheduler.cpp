@@ -1,6 +1,9 @@
 
 #include "GPUWarpMemoryAccess.h"
 #include "GPULatencyAdapter.h"
+#include "GPUMemoryModel.h"
+#include "GPUBottleneckAnalyzer.h"
+
 #include "CacheHierarchy.h"
 #include "Memory.h"
 #include "ReplacementPolicy.h"
@@ -13,10 +16,18 @@
 #include <stdexcept>
 #include <algorithm>
 
+// =========================================
+// WARP STATE
+// =========================================
+
 struct Warp {
     int nextInstruction = 0;
     int readyCycle = 0;
 };
+
+// =========================================
+// SIMULATION RESULTS
+// =========================================
 
 struct Result {
     int issueCycles = 0;
@@ -35,7 +46,12 @@ struct Result {
     double totalUtilization = 0.0;
 };
 
+// =========================================
+// GPU SIMULATION
+// =========================================
+
 Result simulate(int numWarps) {
+
     if (numWarps <= 0) {
         throw std::invalid_argument(
             "Number of warps must be positive"
@@ -44,6 +60,10 @@ Result simulate(int numWarps) {
 
     constexpr int instructionsPerWarp = 8;
     constexpr int blockSize = 64;
+
+    // =====================================
+    // MEMORY AND CACHE HIERARCHY
+    // =====================================
 
     Memory memory;
 
@@ -63,20 +83,23 @@ Result simulate(int numWarps) {
     std::vector<Warp> warps(numWarps);
 
     Result result;
+
     int nextWarp = 0;
     int currentCycle = 0;
     int finalCompletionCycle = 0;
 
-    // =========================================
+    // =====================================
     // ROUND-ROBIN WARP SCHEDULING
-    // =========================================
+    // =====================================
 
     while (true) {
+
         bool unfinished = false;
 
         for (const auto& warp : warps) {
             if (warp.nextInstruction <
                 instructionsPerWarp) {
+
                 unfinished = true;
                 break;
             }
@@ -88,6 +111,7 @@ Result simulate(int numWarps) {
 
         bool issued = false;
 
+        // Search for a ready warp
         for (int offset = 0;
              offset < numWarps;
              ++offset) {
@@ -97,18 +121,20 @@ Result simulate(int numWarps) {
 
             Warp& warp = warps[index];
 
+            // Skip completed warps
             if (warp.nextInstruction >=
                 instructionsPerWarp) {
                 continue;
             }
 
+            // Skip warps waiting for memory
             if (warp.readyCycle > currentCycle) {
                 continue;
             }
 
-            // =====================================
+            // =================================
             // GENERATE WARP MEMORY ADDRESSES
-            // =====================================
+            // =================================
 
             std::uint64_t baseAddress =
                 static_cast<std::uint64_t>(index)
@@ -119,6 +145,7 @@ Result simulate(int numWarps) {
                 ) * 128ULL;
 
             std::vector<std::uint64_t> addresses;
+
             addresses.reserve(gpu::WARP_SIZE);
 
             for (int lane = 0;
@@ -133,9 +160,9 @@ Result simulate(int numWarps) {
                 );
             }
 
-            // =====================================
+            // =================================
             // CACHE-LINE-AWARE MEMORY ACCESS
-            // =====================================
+            // =================================
 
             gpu::WarpMemoryResult access =
                 gpu::analyzeWarpMemoryAccess(
@@ -144,20 +171,28 @@ Result simulate(int numWarps) {
                     blockSize
                 );
 
+            // =================================
+            // MEMORY STATISTICS
+            // =================================
+
             result.memorySectors +=
                 access.sectors;
 
             result.cacheLines +=
                 access.cacheLines;
 
-            result.l1Hits += access.l1Hits;
-            result.l2Hits += access.l2Hits;
+            result.l1Hits +=
+                access.l1Hits;
+
+            result.l2Hits +=
+                access.l2Hits;
+
             result.dramAccesses +=
                 access.dramAccesses;
 
-            // =====================================
-            // MEMORY COMPLETION TIME
-            // =====================================
+            // =================================
+            // MEMORY LATENCY
+            // =================================
 
             warp.readyCycle =
                 currentCycle + access.latency;
@@ -167,9 +202,9 @@ Result simulate(int numWarps) {
                 warp.readyCycle
             );
 
-            // =====================================
+            // =================================
             // ISSUE INSTRUCTION
-            // =====================================
+            // =================================
 
             ++warp.nextInstruction;
             ++result.issued;
@@ -178,9 +213,11 @@ Result simulate(int numWarps) {
                 (index + 1) % numWarps;
 
             issued = true;
+
             break;
         }
 
+        // No warp ready this cycle
         if (!issued) {
             ++result.idleCycles;
         }
@@ -188,9 +225,9 @@ Result simulate(int numWarps) {
         ++currentCycle;
     }
 
-    // =========================================
+    // =====================================
     // PERFORMANCE METRICS
-    // =========================================
+    // =====================================
 
     result.issueCycles = currentCycle;
 
@@ -200,17 +237,24 @@ Result simulate(int numWarps) {
     );
 
     result.issueUtilization =
-        100.0 * result.issued /
-        result.issueCycles;
+        100.0 *
+        static_cast<double>(result.issued) /
+        static_cast<double>(result.issueCycles);
 
     result.totalUtilization =
-        100.0 * result.issued /
-        result.completionCycles;
+        100.0 *
+        static_cast<double>(result.issued) /
+        static_cast<double>(result.completionCycles);
 
     return result;
 }
 
+// =========================================
+// MAIN FUNCTION
+// =========================================
+
 int main() {
+
     std::cout
         << "\n========================================\n"
         << " INTEGRATED GPU PERFORMANCE SIMULATOR\n"
@@ -221,7 +265,12 @@ int main() {
         << "Cache block size: 64 bytes\n"
         << "L1 latency: 20 cycles\n"
         << "L2 latency: 100 cycles\n"
-        << "DRAM latency: 400 cycles\n\n";
+        << "DRAM latency: 400 cycles\n"
+        << "Cache-line-aware memory access: Enabled\n\n";
+
+    // =====================================
+    // RESULTS TABLE HEADER
+    // =====================================
 
     std::cout << std::left
               << std::setw(8) << "Warps"
@@ -240,9 +289,15 @@ int main() {
     std::cout << std::fixed
               << std::setprecision(2);
 
+    // =====================================
+    // RUN DIFFERENT WARP CONFIGURATIONS
+    // =====================================
+
     for (int count : {1, 2, 4, 8, 16, 32}) {
+
         Result r = simulate(count);
 
+        // Print performance summary
         std::cout << std::left
                   << std::setw(8) << count
                   << std::setw(12) << r.issueCycles
@@ -258,6 +313,45 @@ int main() {
                   << r.issueUtilization
                   << r.totalUtilization
                   << "%\n";
+
+        // =================================
+        // GPU BOTTLENECK ANALYSIS
+        // =================================
+
+        if (count == 32) {
+
+            gpu::BottleneckStats stats;
+
+            stats.issueCycles =
+                r.issueCycles;
+
+            stats.completionCycles =
+                r.completionCycles;
+
+            stats.issuedInstructions =
+                r.issued;
+
+            stats.idleCycles =
+                r.idleCycles;
+
+            stats.l1Hits =
+                r.l1Hits;
+
+            stats.l2Hits =
+                r.l2Hits;
+
+            stats.dramAccesses =
+                r.dramAccesses;
+
+            stats.cacheLines =
+                r.cacheLines;
+
+            gpu::printBottleneckReport(
+                std::cout,
+                count,
+                stats
+            );
+        }
     }
 
     return 0;
